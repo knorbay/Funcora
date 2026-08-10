@@ -1,3 +1,4 @@
+
 name: Build Funcora (Windows)
 
 on:
@@ -14,10 +15,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.13
+      - name: Set up Python 3.14
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Upgrade pip
         run: |
@@ -25,14 +26,19 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade nuitka
-          pip install -r requirements.txt
+          python -m pip install --upgrade nuitka
+          python -m pip install numpy sympy matplotlib PySide6
+
+      - name: Show versions
+        run: |
+          python --version
+          python -m nuitka --version
 
       - name: Build Funcora
         run: |
           python -m nuitka ^
-            --standalone ^
             --onefile ^
+            --standalone ^
             --lto=yes ^
             --windows-console-mode=disable ^
             --enable-plugin=pyside6 ^
