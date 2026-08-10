@@ -29,12 +29,15 @@ jobs:
 
       - name: Build Funcora
         run: >
-          python -m nuitka --standalone --onefile
-          --lto=no
-          --windows-console-mode=disable
+          python -m nuitka
+          --standalone
+          --onefile
           --assume-yes-for-downloads
+          --windows-console-mode=disable
           --enable-plugin=pyside6
           --include-data-dir=assets=assets
+          --include-windows-runtime-dlls=no
+          --jobs=2
           --output-dir=build
           --output-filename=Funcora.exe
           Funcora.py
