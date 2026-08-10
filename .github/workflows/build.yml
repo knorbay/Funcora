@@ -30,7 +30,7 @@ jobs:
       - name: Build Funcora
         run: >
           python -m nuitka --standalone --onefile
-          --lto=yes
+          --lto=no
           --windows-console-mode=disable
           --assume-yes-for-downloads
           --enable-plugin=pyside6
