@@ -1,4 +1,3 @@
-```yaml
 name: Build Funcora (Windows)
 
 on:
@@ -47,4 +46,4 @@ jobs:
         with:
           name: Funcora-Windows
           path: build/Funcora.exe
-```
+
