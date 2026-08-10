@@ -1,119 +1,50 @@
-name: Build Funcora
+```yaml
+name: Build Funcora (Windows)
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build-windows:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python 3.13
         uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.13"
 
-      - name: Install dependencies
-        shell: pwsh
+      - name: Upgrade pip
         run: |
           python -m pip install --upgrade pip
-          pip install nuitka ordered-set zstandard pyside6 sympy numpy matplotlib pillow imageio
 
-      - name: Build EXE
-        shell: pwsh
+      - name: Install dependencies
         run: |
-          python -m nuitka `
-            --standalone `
-            --windows-console-mode=disable `
-            --include-data-dir=assets=assets `
-            --output-filename=Funcora.exe `
-            --assume-yes-for-downloads `
-            --enable-plugin=pyside6 `
+          pip install --upgrade nuitka
+          pip install -r requirements.txt
+
+      - name: Build Funcora
+        run: |
+          python -m nuitka ^
+            --standalone ^
+            --onefile ^
+            --lto=yes ^
+            --windows-console-mode=disable ^
+            --enable-plugin=pyside6 ^
+            --include-data-dir=assets=assets ^
+            --output-dir=build ^
+            --output-filename=Funcora.exe ^
             Funcora.py
 
-      - name: Check output
-        shell: pwsh
-        run: |
-          Write-Host "=== Nuitka output ==="
-          Get-ChildItem -Recurse -File | Select-Object FullName
-
-          if (!(Test-Path "Funcora.dist\Funcora.exe")) {
-            Write-Error "Funcora.exe was not found."
-            exit 1
-          }
-
-      - name: Zip Windows Build
-        shell: pwsh
-        run: |
-          Compress-Archive `
-            -Path "Funcora.dist\*" `
-            -DestinationPath "Funcora-Windows.zip"
-
-      - name: Upload Windows Build
+      - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
           name: Funcora-Windows
-          path: Funcora-Windows.zip
-
-  build-macos:
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14"
-
-      - name: Install dependencies
-        shell: bash
-        run: |
-          python3 -m pip install --upgrade pip
-          pip install nuitka ordered-set zstandard pyside6 sympy numpy matplotlib pillow imageio
-
-      - name: Build APP
-        shell: bash
-        run: |
-          python3 -m nuitka \
-            --standalone \
-            --macos-create-app-bundle \
-            --macos-app-icon=assets/icon.icns \
-            --include-data-dir=assets=assets \
-            --output-filename=Funcora \
-            --enable-plugin=pyside6 \
-            Funcora.py
-
-      - name: Check output
-        shell: bash
-        run: |
-          echo "=== Nuitka output ==="
-          find . -maxdepth 3 -type f
-
-          if [ ! -d "Funcora.app" ]; then
-            echo "Funcora.app was not found."
-            exit 1
-          fi
-
-      - name: Zip macOS Build
-        shell: bash
-        run: |
-          ditto \
-            -c \
-            -k \
-            --sequesterRsrc \
-            --keepParent \
-            Funcora.app \
-            Funcora-macOS.zip
-
-      - name: Upload macOS Build
-        uses: actions/upload-artifact@v4
-        with:
-          name: Funcora-macOS
-          path: Funcora-macOS.zip
+          path: build/Funcora.exe
+```
