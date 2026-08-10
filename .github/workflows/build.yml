@@ -50,6 +50,7 @@ jobs:
             --nofollow-import-to=sympy.tensor ^
             --nofollow-import-to=sympy.plotting ^
             --nofollow-import-to=sympy.parsing.latex ^
+            --nofollow-import-to=sympy.polys.polyquinticconst ^
             --output-dir=build ^
             --output-filename=Funcora.exe ^
             Funcora.py
