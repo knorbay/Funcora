@@ -164,7 +164,7 @@ def build_domain_intervals(domain):
     return intervals, excluded
 
 class CachedAnalysis:
-    def __init__(self, raw_str: str, x_symbol: sp.Symbol):
+    def __init__(self, raw_str: str, x_symbol: sp.Symbol): 
         sanitize_math_input(raw_str)
         self.raw_str = raw_str
         clean_str = raw_str.replace("^", "**").replace("cosec", "csc").replace("cosech", "csch")
