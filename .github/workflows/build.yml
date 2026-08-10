@@ -28,19 +28,31 @@ jobs:
           pip install pyside6 sympy numpy matplotlib pillow
 
       - name: Build Funcora
-        run: >
-          python -m nuitka
-          --standalone
-          --onefile
-          --assume-yes-for-downloads
-          --windows-console-mode=disable
-          --enable-plugin=pyside6
-          --include-data-dir=assets=assets
-          --include-windows-runtime-dlls=no
-          --jobs=2
-          --output-dir=build
-          --output-filename=Funcora.exe
-          Funcora.py
+        shell: cmd
+        run: |
+          python -m nuitka ^
+            --standalone ^
+            --onefile ^
+            --jobs=2 ^
+            --lto=no ^
+            --assume-yes-for-downloads ^
+            --windows-console-mode=disable ^
+            --enable-plugin=pyside6 ^
+            --include-data-dir=assets=assets ^
+            --include-windows-runtime-dlls=no ^
+            --nofollow-import-to=tkinter ^
+            --nofollow-import-to=IPython ^
+            --nofollow-import-to=jupyter ^
+            --nofollow-import-to=pytest ^
+            --nofollow-import-to=sympy.testing ^
+            --nofollow-import-to=sympy.physics ^
+            --nofollow-import-to=sympy.stats ^
+            --nofollow-import-to=sympy.tensor ^
+            --nofollow-import-to=sympy.plotting ^
+            --nofollow-import-to=sympy.parsing.latex ^
+            --output-dir=build ^
+            --output-filename=Funcora.exe ^
+            Funcora.py
 
       - name: Upload executable
         uses: actions/upload-artifact@v4
