@@ -32,6 +32,7 @@ jobs:
           python -m nuitka --standalone --onefile
           --lto=yes
           --windows-console-mode=disable
+          --assume-yes-for-downloads
           --enable-plugin=pyside6
           --include-data-dir=assets=assets
           --output-dir=build
