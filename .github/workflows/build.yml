@@ -1,4 +1,4 @@
-name: Build Funcora (Windows)
+name: Build Funcora
 
 on:
   workflow_dispatch:
@@ -32,7 +32,6 @@ jobs:
         run: |
           python -m nuitka ^
             --standalone ^
-            --onefile ^
             --jobs=2 ^
             --lto=no ^
             --assume-yes-for-downloads ^
@@ -52,11 +51,68 @@ jobs:
             --nofollow-import-to=sympy.parsing.latex ^
             --nofollow-import-to=sympy.polys.polyquinticconst ^
             --output-dir=build ^
-            --output-filename=Funcora.exe ^
             Funcora.py
 
-      - name: Upload executable
+      - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
           name: Funcora-Windows
-          path: build/Funcora.exe
+          path: build/Funcora.dist
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1 \
+            libegl1 \
+            libxkbcommon-x11-0 \
+            libxcb-cursor0
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade nuitka
+          pip install pyside6 sympy numpy matplotlib pillow
+
+      - name: Build Funcora
+        run: |
+          python -m nuitka \
+            --standalone \
+            --jobs=2 \
+            --lto=no \
+            --assume-yes-for-downloads \
+            --enable-plugin=pyside6 \
+            --include-data-dir=assets=assets \
+            --nofollow-import-to=tkinter \
+            --nofollow-import-to=IPython \
+            --nofollow-import-to=jupyter \
+            --nofollow-import-to=pytest \
+            --nofollow-import-to=sympy.testing \
+            --nofollow-import-to=sympy.physics \
+            --nofollow-import-to=sympy.stats \
+            --nofollow-import-to=sympy.tensor \
+            --nofollow-import-to=sympy.plotting \
+            --nofollow-import-to=sympy.parsing.latex \
+            --nofollow-import-to=sympy.polys.polyquinticconst \
+            --output-dir=build \
+            Funcora.py
+
+      - name: Upload Linux build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Funcora-Linux
+          path: build/Funcora.dist
