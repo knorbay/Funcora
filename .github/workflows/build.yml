@@ -40,13 +40,14 @@ jobs:
           pip install pyside6 sympy numpy matplotlib pillow
 
       - name: Build Funcora
-        shell: cmd
+        shell: cmd    
         run: |
           python -m nuitka ^
             --standalone ^
             --jobs=1 ^
             --low-memory ^
             --lto=no ^
+            --msvc=latest ^
             --assume-yes-for-downloads ^
             --windows-console-mode=disable ^
             --windows-icon-from-ico=assets/icon.ico ^
@@ -65,6 +66,10 @@ jobs:
             --nofollow-import-to=sympy.tensor ^
             --nofollow-import-to=sympy.plotting ^
             --nofollow-import-to=sympy.parsing.latex ^
+            --nofollow-import-to=sympy.polys.polyquinticconst ^
+            --nofollow-import-to=sympy.polys.numberfields ^
+            --nofollow-import-to=sympy.combinatorics ^
+            --nofollow-import-to=sympy.liealgebras ^
             --output-dir=build ^
             Funcora.py
 
