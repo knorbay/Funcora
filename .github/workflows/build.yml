@@ -19,12 +19,24 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Increase Windows Pagefile (Virtual Memory)
+        shell: pwsh
+        run: |
+          $System = Get-CimInstance -ClassName Win32_ComputerSystem
+          $System | Set-CimInstance -Property @{AutomaticManagedPagefile = $false}
+          $PageFile = Get-CimInstance -ClassName Win32_PageFileSetting
+          if ($PageFile) {
+            $PageFile | Set-CimInstance -Property @{InitialSize = 8192; MaximumSize = 16384}
+          } else {
+            New-CimInstance -ClassName Win32_PageFileSetting -Property @{Name = "C:\pagefile.sys"; InitialSize = 8192; MaximumSize = 16384}
+          }
+
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
 
       - name: Install dependencies
         run: |
-          pip install --upgrade nuitka
+          pip install --upgrade nuitka ordered-set zstandard
           pip install pyside6 sympy numpy matplotlib pillow
 
       - name: Build Funcora
@@ -32,7 +44,8 @@ jobs:
         run: |
           python -m nuitka ^
             --standalone ^
-            --jobs=2 ^
+            --jobs=1 ^
+            --low-memory ^
             --lto=no ^
             --assume-yes-for-downloads ^
             --windows-console-mode=disable ^
