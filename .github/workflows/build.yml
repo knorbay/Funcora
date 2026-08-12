@@ -22,33 +22,32 @@ jobs:
       - name: Increase Windows Pagefile
         shell: pwsh
         run: |
-          $System = Get-CimInstance Win32_ComputerSystem
-          $System | Set-CimInstance -Property @{AutomaticManagedPagefile=$false}
+          $System = Get-CimInstance -ClassName Win32_ComputerSystem
+          $System | Set-CimInstance -Property @{AutomaticManagedPagefile = $false}
 
-          $PageFile = Get-CimInstance Win32_PageFileSetting
+          $PageFile = Get-CimInstance -ClassName Win32_PageFileSetting
 
           if ($PageFile) {
-              $PageFile | Set-CimInstance -Property @{
-                  InitialSize = 8192
-                  MaximumSize = 16384
-              }
-          }
-          else {
-              New-CimInstance Win32_PageFileSetting -Property @{
-                  Name="C:\pagefile.sys"
-                  InitialSize=8192
-                  MaximumSize=16384
-              }
+            $PageFile | Set-CimInstance -Property @{
+              InitialSize = 8192
+              MaximumSize = 16384
+            }
+          } else {
+            New-CimInstance -ClassName Win32_PageFileSetting -Property @{
+              Name = "C:\pagefile.sys"
+              InitialSize = 8192
+              MaximumSize = 16384
+            }
           }
 
-      - name: Cache Nuitka
+      - name: Restore Nuitka Cache
         uses: actions/cache@v4
         with:
           path: |
             C:\Users\runneradmin\AppData\Local\Nuitka\Nuitka\Cache
-          key: nuitka-${{ runner.os }}-${{ hashFiles('Funcora.py') }}
+          key: ${{ runner.os }}-nuitka-${{ hashFiles('Funcora.py') }}
           restore-keys: |
-            nuitka-${{ runner.os }}-
+            ${{ runner.os }}-nuitka-
 
       - name: Upgrade pip
         run: |
@@ -56,7 +55,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install nuitka ordered-set zstandard
+          pip install --upgrade nuitka ordered-set zstandard
           pip install pyside6 sympy numpy matplotlib pillow
 
       - name: Build Funcora
@@ -92,20 +91,15 @@ jobs:
             --output-dir=build ^
             Funcora.py
 
-      - name: Prepare Release Package
+      - name: Zip Windows Build
         shell: pwsh
         run: |
-          if (!(Test-Path "build\Funcora.dist")) {
-            Write-Error "Funcora.dist bulunamadı!"
-            exit 1
-          }
-
           Compress-Archive `
             -Path "build\Funcora.dist\*" `
             -DestinationPath "Funcora-Windows.zip"
 
-      - name: Upload Windows Artifact
+      - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
           name: Funcora-Windows
-          path: Funcora-Windows.zip  
+          path: Funcora-Windows.zip
