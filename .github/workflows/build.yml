@@ -63,10 +63,10 @@ jobs:
         run: |
           python -m nuitka ^
             --standalone ^
-            --jobs=2 ^
+            --jobs=1 ^
             --low-memory ^
             --lto=no ^
-            --msvc=latest ^
+            --clang ^
             --assume-yes-for-downloads ^
             --windows-console-mode=disable ^
             --windows-icon-from-ico=assets/icon.ico ^
@@ -75,9 +75,7 @@ jobs:
             --enable-plugin=matplotlib ^
             --include-data-dir=assets=assets ^
             --include-package=sympy ^
-            --include-module=sympy.polys.polyquinticconst ^
             --no-deployment-flag=excluded-module-usage ^
-            --cflags=/utf-8 ^
             --nofollow-import-to=tkinter ^
             --nofollow-import-to=IPython ^
             --nofollow-import-to=jupyter ^
@@ -148,7 +146,6 @@ jobs:
             --enable-plugin=matplotlib \
             --include-data-dir=assets=assets \
             --include-package=sympy \
-            --include-module=sympy.polys.polyquinticconst \
             --no-deployment-flag=excluded-module-usage \
             --nofollow-import-to=tkinter \
             --nofollow-import-to=IPython \
