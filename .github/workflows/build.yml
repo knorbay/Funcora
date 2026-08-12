@@ -66,7 +66,7 @@ jobs:
             --jobs=1 ^
             --low-memory ^
             --lto=no ^
-            --clang ^
+            --msvc=latest ^
             --assume-yes-for-downloads ^
             --windows-console-mode=disable ^
             --windows-icon-from-ico=assets/icon.ico ^
@@ -75,14 +75,10 @@ jobs:
             --enable-plugin=matplotlib ^
             --include-data-dir=assets=assets ^
             --include-package=sympy ^
-            --no-deployment-flag=excluded-module-usage ^
             --nofollow-import-to=tkinter ^
             --nofollow-import-to=IPython ^
             --nofollow-import-to=jupyter ^
             --nofollow-import-to=pytest ^
-            --nofollow-import-to=sympy.testing ^
-            --nofollow-import-to=sympy.physics ^
-            --nofollow-import-to=sympy.stats ^
             --output-dir=build ^
             Funcora.py
 
