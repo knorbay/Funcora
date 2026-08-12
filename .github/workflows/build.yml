@@ -62,8 +62,7 @@ jobs:
             --windows-icon-from-ico=assets/icon.ico ^
             --enable-plugin=pyside6 ^
             --enable-plugin=numpy ^
-            --include-module=matplotlib.backends.backend_qtagg ^
-            --include-module=matplotlib.backends.backend_qt ^
+            --enable-plugin=matplotlib ^
             --include-data-dir=assets=assets ^
             --nofollow-import-to=tkinter ^
             --nofollow-import-to=IPython ^
@@ -82,8 +81,13 @@ jobs:
             --output-dir=build ^
             Funcora.py
 
+      - name: Zip Windows Build
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "build\Funcora.dist\*" -DestinationPath "Funcora-Windows.zip"
+
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
           name: Funcora-Windows
-          path: build/Funcora.dist
+          path: Funcora-Windows.zip

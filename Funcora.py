@@ -1147,17 +1147,38 @@ class FuncoraWindow(QMainWindow):
     def save_graph(self):
         if path := QFileDialog.getSaveFileName(self, "Save Graph", "", "PNG Images (*.png);;SVG Images (*.svg)")[0]:
             self.canvas.fig.savefig(path, facecolor=self.canvas.fig.get_facecolor(), edgecolor='none', dpi=300)
-
+def resource_path(relative):
+    if getattr(sys, "frozen", False):
+        return os.path.join(os.path.dirname(sys.executable), relative)
+    return os.path.join(os.path.dirname(__file__), relative)
 def load_app_icon() -> QIcon:
-    for path in ["assets/icon.icns" if sys.platform == "darwin" else "assets/icon.ico", "assets/icon.ico", "assets/icon.icns", "assets/icon.png"]:
-        if os.path.exists(path) and not (icon := QIcon(path)).isNull(): return icon
+    for path in [
+        resource_path("assets/icon.ico"),
+        resource_path("assets/icon.png"),
+        resource_path("assets/icon.icns")
+    ]:
+        if os.path.exists(path):
+            icon = QIcon(path)
+            if not icon.isNull():
+                return icon
     return QIcon()
 
 def create_splash_pixmap(size: int = 220) -> QPixmap:
-    for path in ["assets/icon.icns" if sys.platform == "darwin" else "assets/icon.icns", "assets/icon.png"]:
-        if os.path.exists(path) and not (pixmap := QPixmap(path)).isNull(): return pixmap.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    for path in [
+        resource_path("assets/icon.ico"),
+        resource_path("assets/icon.png"),
+        resource_path("assets/icon.icns")
+    ]:
+        if os.path.exists(path):
+            pixmap = QPixmap(path)
+            if not pixmap.isNull():
+                return pixmap.scaled(
+                    size,
+                    size,
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
+                )
     return QPixmap()
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(load_app_icon())
