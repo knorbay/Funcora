@@ -74,6 +74,7 @@ jobs:
             --enable-plugin=numpy ^
             --enable-plugin=matplotlib ^
             --include-data-dir=assets=assets ^
+            --no-deployment-flag=excluded-module-usage ^
             --nofollow-import-to=tkinter ^
             --nofollow-import-to=IPython ^
             --nofollow-import-to=jupyter ^
@@ -84,7 +85,6 @@ jobs:
             --nofollow-import-to=sympy.tensor ^
             --nofollow-import-to=sympy.plotting ^
             --nofollow-import-to=sympy.parsing.latex ^
-            --nofollow-import-to=sympy.polys.polyquinticconst ^
             --nofollow-import-to=sympy.polys.numberfields ^
             --nofollow-import-to=sympy.combinatorics ^
             --nofollow-import-to=sympy.liealgebras ^
