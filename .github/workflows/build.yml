@@ -58,7 +58,7 @@ jobs:
           pip install --upgrade nuitka ordered-set zstandard
           pip install pyside6 sympy numpy matplotlib pillow
 
-      - name: Build Funcora
+      - name: Build Funcora (Windows)
         shell: cmd
         run: |
           python -m nuitka ^
@@ -74,7 +74,10 @@ jobs:
             --enable-plugin=numpy ^
             --enable-plugin=matplotlib ^
             --include-data-dir=assets=assets ^
+            --include-package=sympy ^
+            --include-module=sympy.polys.polyquinticconst ^
             --no-deployment-flag=excluded-module-usage ^
+            --cflags=/utf-8 ^
             --nofollow-import-to=tkinter ^
             --nofollow-import-to=IPython ^
             --nofollow-import-to=jupyter ^
@@ -82,12 +85,6 @@ jobs:
             --nofollow-import-to=sympy.testing ^
             --nofollow-import-to=sympy.physics ^
             --nofollow-import-to=sympy.stats ^
-            --nofollow-import-to=sympy.tensor ^
-            --nofollow-import-to=sympy.plotting ^
-            --nofollow-import-to=sympy.parsing.latex ^
-            --nofollow-import-to=sympy.polys.numberfields ^
-            --nofollow-import-to=sympy.combinatorics ^
-            --nofollow-import-to=sympy.liealgebras ^
             --output-dir=build ^
             Funcora.py
 
@@ -150,6 +147,8 @@ jobs:
             --enable-plugin=numpy \
             --enable-plugin=matplotlib \
             --include-data-dir=assets=assets \
+            --include-package=sympy \
+            --include-module=sympy.polys.polyquinticconst \
             --no-deployment-flag=excluded-module-usage \
             --nofollow-import-to=tkinter \
             --nofollow-import-to=IPython \
@@ -158,12 +157,6 @@ jobs:
             --nofollow-import-to=sympy.testing \
             --nofollow-import-to=sympy.physics \
             --nofollow-import-to=sympy.stats \
-            --nofollow-import-to=sympy.tensor \
-            --nofollow-import-to=sympy.plotting \
-            --nofollow-import-to=sympy.parsing.latex \
-            --nofollow-import-to=sympy.polys.numberfields \
-            --nofollow-import-to=sympy.combinatorics \
-            --nofollow-import-to=sympy.liealgebras \
             --output-dir=build \
             Funcora.py
 
