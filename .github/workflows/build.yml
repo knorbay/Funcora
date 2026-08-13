@@ -1,4 +1,5 @@
-name: Build Funcora
+
+name: Build Funcora Windows
 
 on:
   workflow_dispatch:
@@ -55,10 +56,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade nuitka ordered-set zstandard
-          pip install pyside6 sympy numpy matplotlib pillow
+          python -m pip install --upgrade nuitka ordered-set zstandard
+          python -m pip install pyside6 sympy numpy matplotlib pillow
 
-      - name: Build Funcora (Windows)
+      - name: Build Funcora
         shell: cmd
         run: |
           python -m nuitka ^
@@ -66,7 +67,7 @@ jobs:
             --jobs=1 ^
             --low-memory ^
             --lto=no ^
-            --msvc=latest ^
+            --mingw64 ^
             --assume-yes-for-downloads ^
             --windows-console-mode=disable ^
             --windows-icon-from-ico=assets/icon.ico ^
@@ -77,10 +78,6 @@ jobs:
             --nofollow-import-to=IPython ^
             --nofollow-import-to=jupyter ^
             --nofollow-import-to=pytest ^
-            --nofollow-import-to=sympy.testing ^
-            --nofollow-import-to=sympy.physics ^
-            --nofollow-import-to=sympy.stats ^
-            --nofollow-import-to=sympy.tensor ^
             --output-dir=build ^
             Funcora.py
 
@@ -96,78 +93,3 @@ jobs:
         with:
           name: Funcora-Windows
           path: Funcora-Windows.zip
-
-  build-linux:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install Linux System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            python3-dev \
-            patchelf \
-            libgl1-mesa-dev \
-            libegl1-mesa-dev \
-            libxkbcommon-x11-0 \
-            libxcb-cursor0 \
-            zip
-
-      - name: Restore Nuitka Cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/Nuitka
-          key: ${{ runner.os }}-nuitka-${{ hashFiles('Funcora.py') }}
-          restore-keys: |
-            ${{ runner.os }}-nuitka-
-
-      - name: Upgrade pip
-        run: |
-          python -m pip install --upgrade pip
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade nuitka ordered-set zstandard
-          pip install pyside6 sympy numpy matplotlib pillow
-
-      - name: Build Funcora (Linux)
-        run: |
-          python -m nuitka \
-            --standalone \
-            --jobs=2 \
-            --low-memory \
-            --lto=no \
-            --assume-yes-for-downloads \
-            --enable-plugin=pyside6 \
-            --enable-plugin=matplotlib \
-            --include-data-dir=assets=assets \
-            --nofollow-import-to=tkinter \
-            --nofollow-import-to=IPython \
-            --nofollow-import-to=jupyter \
-            --nofollow-import-to=pytest \
-            --nofollow-import-to=sympy.testing \
-            --nofollow-import-to=sympy.physics \
-            --nofollow-import-to=sympy.stats \
-            --nofollow-import-to=sympy.tensor \
-            --output-dir=build \
-            Funcora.py
-
-      - name: Zip Linux Build
-        run: |
-          cd build/Funcora.dist
-          zip -r ../../Funcora-Linux.zip .
-
-      - name: Upload Linux build
-        uses: actions/upload-artifact@v4
-        with:
-          name: Funcora-Linux
-          path: Funcora-Linux.zip
