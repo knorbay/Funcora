@@ -47,7 +47,7 @@ jobs:
             --include-data-dir=assets=assets \
             --include-package=sympy \
             --output-dir=build \
-            main.py
+            Funcora.py
 
       - name: Upload Linux build
         uses: actions/upload-artifact@v4
