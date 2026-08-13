@@ -71,14 +71,16 @@ jobs:
             --windows-console-mode=disable ^
             --windows-icon-from-ico=assets/icon.ico ^
             --enable-plugin=pyside6 ^
-            --enable-plugin=numpy ^
             --enable-plugin=matplotlib ^
             --include-data-dir=assets=assets ^
-            --include-package=sympy ^
             --nofollow-import-to=tkinter ^
             --nofollow-import-to=IPython ^
             --nofollow-import-to=jupyter ^
             --nofollow-import-to=pytest ^
+            --nofollow-import-to=sympy.testing ^
+            --nofollow-import-to=sympy.physics ^
+            --nofollow-import-to=sympy.stats ^
+            --nofollow-import-to=sympy.tensor ^
             --output-dir=build ^
             Funcora.py
 
@@ -110,7 +112,15 @@ jobs:
       - name: Install Linux System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential python3-dev patchelf libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0 zip
+          sudo apt-get install -y \
+            build-essential \
+            python3-dev \
+            patchelf \
+            libgl1-mesa-dev \
+            libegl1-mesa-dev \
+            libxkbcommon-x11-0 \
+            libxcb-cursor0 \
+            zip
 
       - name: Restore Nuitka Cache
         uses: actions/cache@v4
@@ -131,23 +141,25 @@ jobs:
 
       - name: Build Funcora (Linux)
         run: |
-         python -m nuitka \
-          --standalone \
-          --jobs=2 \
-          --low-memory \
-          --lto=no \
-          --assume-yes-for-downloads \
-          --enable-plugin=pyside6 \
-          --enable-plugin=numpy \
-          --enable-plugin=matplotlib \
-          --include-data-dir=assets=assets \
-          --include-package=sympy \
-          --nofollow-import-to=tkinter \
-          --nofollow-import-to=IPython \
-          --nofollow-import-to=jupyter \
-          --nofollow-import-to=pytest \
-          --output-dir=build \
-          Funcora.py
+          python -m nuitka \
+            --standalone \
+            --jobs=2 \
+            --low-memory \
+            --lto=no \
+            --assume-yes-for-downloads \
+            --enable-plugin=pyside6 \
+            --enable-plugin=matplotlib \
+            --include-data-dir=assets=assets \
+            --nofollow-import-to=tkinter \
+            --nofollow-import-to=IPython \
+            --nofollow-import-to=jupyter \
+            --nofollow-import-to=pytest \
+            --nofollow-import-to=sympy.testing \
+            --nofollow-import-to=sympy.physics \
+            --nofollow-import-to=sympy.stats \
+            --nofollow-import-to=sympy.tensor \
+            --output-dir=build \
+            Funcora.py
 
       - name: Zip Linux Build
         run: |
