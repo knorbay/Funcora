@@ -1,4 +1,4 @@
-name: Build Linux
+name: Build Desktop Apps
 
 on:
   workflow_dispatch:
@@ -7,8 +7,19 @@ on:
       - main
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build:
+    name: Build ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-latest
+            artifact: Funcora-Linux
+          - name: Windows
+            os: windows-latest
+            artifact: Funcora-Windows
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -22,18 +33,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install nuitka
-          pip install PySide6 numpy matplotlib sympy
+          python -m pip install nuitka PySide6 numpy matplotlib sympy ordered-set zstandard
 
-      - name: Cache Nuitka
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/Nuitka
-          key: nuitka-linux-${{ runner.arch }}
-          restore-keys: |
-            nuitka-linux-
-
-      - name: Build with Nuitka
+      - name: Build standalone application
+        if: runner.os != 'Windows'
         run: |
           python -m nuitka \
             --standalone \
@@ -49,8 +52,41 @@ jobs:
             --output-dir=build \
             Funcora.py
 
-      - name: Upload Linux build
+      - name: Build standalone application
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -m nuitka `
+            --standalone `
+            --assume-yes-for-downloads `
+            --jobs=2 `
+            --low-memory `
+            --lto=no `
+            --windows-console-mode=disable `
+            --windows-icon-from-ico=assets/icon.ico `
+            --enable-plugin=pyside6 `
+            --enable-plugin=numpy `
+            --enable-plugin=matplotlib `
+            --include-data-dir=assets=assets `
+            --include-package=sympy `
+            --output-dir=build `
+            Funcora.py
+
+      - name: Package Linux build
+        if: runner.os == 'Linux'
+        run: |
+          cd build/Funcora.dist
+          zip -9 -r ../../Funcora-Linux.zip .
+
+      - name: Package Windows build
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path build/Funcora.dist/* -DestinationPath Funcora-Windows.zip -CompressionLevel Optimal
+
+      - name: Upload packaged application
         uses: actions/upload-artifact@v4
         with:
-          name: Linux-build
-          path: build/
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.zip
+          if-no-files-found: error
+          compression-level: 0

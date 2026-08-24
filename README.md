@@ -14,6 +14,11 @@ Funcora is a desktop mathematical graphing and analysis application developed wi
 * Mathematical expression parsing
 * Graph saving
 * Interactive graphical user interface
+* Inline expression validation
+* Toggleable grid and keyboard shortcuts
+* Saveable `.funcora` project files
+* Built-in Cartesian, parametric, polar, and implicit examples
+* Function duplication and copyable analysis results
 
 ## Technologies
 
@@ -48,6 +53,25 @@ Run the application:
 ```bash
 python Funcora.py
 ```
+
+Useful shortcuts: `Ctrl+N` adds a function, `Ctrl+S` saves the project,
+`Ctrl+O` opens a project, `Ctrl+E` exports the graph, `Ctrl+0` resets the
+view, and `Ctrl+Shift+G` toggles the grid.
+
+## Testing
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+## Build for macOS
+
+```bash
+pip install pyinstaller
+pyinstaller --noconfirm Funcora.spec
+```
+
+The packaged application is created at `dist/Funcora.app`.
 
 ## Download
 

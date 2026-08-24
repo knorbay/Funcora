@@ -1,17 +1,19 @@
 import os
 import sys
+import json
 import numpy as np
 import sympy as sp
 from fractions import Fraction
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import (
     QColor, QFont, QIcon, QPixmap,
-    QTextCursor, QTextCharFormat
+    QTextCursor, QTextCharFormat, QAction
 )
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QFrame, QScrollArea, QDoubleSpinBox,
-    QSplitter, QToolButton, QColorDialog, QFileDialog, QTextEdit, QSplashScreen
+    QSplitter, QToolButton, QColorDialog, QFileDialog, QTextEdit, QSplashScreen,
+    QComboBox, QMenu, QMessageBox
 )
 from sympy.calculus.util import continuous_domain
 from sympy.parsing.sympy_parser import (
@@ -42,11 +44,20 @@ QPushButton#fillBtn { background-color: #10B981; color: white; border: none; bor
 QPushButton#fillBtn[fill_state="false"] { background-color: #2B2D42; color: #64748B; }
 QPushButton#deleteBtn { background-color: rgba(239, 68, 68, 0.1); color: #EF4444; border: none; border-radius: 4px; font-weight: 600; font-size: 11px; }
 QPushButton#deleteBtn:hover { background-color: #EF4444; color: white; }
+QPushButton#duplicateBtn { background-color: #252738; color: #A5B4FC; border: none; border-radius: 4px; font-weight: 700; }
+QPushButton#duplicateBtn:hover { background-color: #31344A; color: white; }
 QLineEdit#funcInput { background-color: #12131C; border: 1px solid #2B2D42; border-radius: 6px; color: #F8FAFC; padding: 5px 8px; font-family: 'Fira Code', 'Consolas', monospace; }
 QLineEdit#funcInput:focus { border-color: #2563EB; }
 QDoubleSpinBox { background-color: #181924; border: 1px solid #2B2D42; border-radius: 4px; color: #F8FAFC; padding: 3px 6px; }
 QToolButton { background-color: #1E202E; border: 1px solid #2B2D42; border-radius: 6px; padding: 5px 10px; }
 QToolButton:hover { background-color: #2B2D42; }
+QComboBox { background-color: #1E202E; border: 1px solid #2B2D42; border-radius: 6px; padding: 5px 10px; min-width: 120px; }
+QComboBox:hover, QComboBox:focus { border-color: #3B3E5B; }
+QComboBox QAbstractItemView { background-color: #1E202E; border: 1px solid #2B2D42; selection-background-color: #2563EB; }
+QMenu { background-color: #1E202E; border: 1px solid #2B2D42; padding: 5px; }
+QMenu::item { padding: 7px 24px 7px 10px; border-radius: 4px; }
+QMenu::item:selected { background-color: #2B2D42; }
+QLabel#emptyState { color: #64748B; padding: 36px 18px; font-size: 12px; }
 QTextEdit#analysisText { background-color: #12131C; border: 1px solid #232536; border-radius: 6px; color: #CBD5E1; font-family: 'Fira Code', 'Consolas', monospace; font-size: 12px; }
 """
 
@@ -422,7 +433,10 @@ class PlotCanvas(FigureCanvas):
 
     def setup_axes(self):
         self.ax.set_facecolor('#0F1017')
-        self.ax.grid(self.main_window.grid_visible, linestyle='--', color='#232536', alpha=0.6)
+        if self.main_window.grid_visible:
+            self.ax.grid(True, linestyle='--', color='#232536', alpha=0.6)
+        else:
+            self.ax.grid(False)
         self.ax.axhline(0, color='#64748B', linewidth=1.2)
         self.ax.axvline(0, color='#64748B', linewidth=1.2)
         self.ax.tick_params(colors='#94A3B8', labelsize=9)
@@ -480,6 +494,7 @@ class PlotCanvas(FigureCanvas):
 
 class FunctionCard(QFrame):
     card_deleted = Signal(object)
+    duplicate_requested = Signal(object)
     data_changed = Signal()
     hover_enter = Signal(object)
     hover_leave = Signal(object)
@@ -492,8 +507,11 @@ class FunctionCard(QFrame):
         self.fill_area = False
         self.cached_analysis = None
         self.last_parsed_str = ""
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 6, 8, 6)
+        card_layout = QVBoxLayout(self)
+        card_layout.setContentsMargins(8, 6, 8, 6)
+        card_layout.setSpacing(4)
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
         self.color_btn = QPushButton()
         self.color_btn.setObjectName("colorPickerBtn")
@@ -505,6 +523,7 @@ class FunctionCard(QFrame):
         self.label.setStyleSheet("color: #94A3B8;")
         self.input_field = QLineEdit(expression)
         self.input_field.setObjectName("funcInput")
+        self.input_field.setCursorPosition(0)
         self.input_field.textChanged.connect(lambda: self.data_changed.emit())
         self.fill_btn = QPushButton("Area")
         self.fill_btn.setObjectName("fillBtn")
@@ -515,6 +534,11 @@ class FunctionCard(QFrame):
         self.toggle_btn.setObjectName("toggleBtn")
         self.toggle_btn.setFixedSize(32, 26)
         self.toggle_btn.clicked.connect(self.toggle_visibility)
+        self.duplicate_btn = QPushButton("⧉")
+        self.duplicate_btn.setObjectName("duplicateBtn")
+        self.duplicate_btn.setFixedSize(28, 26)
+        self.duplicate_btn.setToolTip("Duplicate function")
+        self.duplicate_btn.clicked.connect(lambda: self.duplicate_requested.emit(self))
         self.delete_btn = QPushButton("Del")
         self.delete_btn.setObjectName("deleteBtn")
         self.delete_btn.setFixedSize(32, 26)
@@ -524,10 +548,17 @@ class FunctionCard(QFrame):
         layout.addWidget(self.input_field, 1)
         layout.addWidget(self.fill_btn)
         layout.addWidget(self.toggle_btn)
+        layout.addWidget(self.duplicate_btn)
         layout.addWidget(self.delete_btn)
+        card_layout.addLayout(layout)
+        self.message_label = QLabel()
+        self.message_label.setWordWrap(True)
+        self.message_label.setStyleSheet("color: #FCA5A5; font-size: 11px; padding: 2px 22px 0 22px;")
+        self.message_label.hide()
+        card_layout.addWidget(self.message_label)
 
-    def set_index(self, index: int):
-        self.label.setText(f"{get_func_name(index)}(x) =")
+    def set_index(self, index: int, argument: str = "x"):
+        self.label.setText(f"{get_func_name(index)}({argument}) =")
 
     def open_color_dialog(self):
         new_color = QColorDialog.getColor(QColor(self.color), self, "Select Color")
@@ -544,7 +575,7 @@ class FunctionCard(QFrame):
         self.toggle_btn.setText("ON" if self.is_visible else "OFF")
         self.toggle_btn.setProperty("visible_state", "true" if self.is_visible else "false")
         self.toggle_btn.setStyle(self.toggle_btn.style())
-        self.input_field.setStyleSheet(f"opacity: {'1.0' if self.is_visible else '0.4'};")
+        self.input_field.setEnabled(self.is_visible)
         self.data_changed.emit()
 
     def toggle_fill(self):
@@ -566,6 +597,19 @@ class FunctionCard(QFrame):
             self.cached_analysis = CachedAnalysis(expr_str, x_symbol)
             self.last_parsed_str = expr_str
         return self.cached_analysis
+
+    def set_error(self, message: str = ""):
+        if message:
+            friendly = (str(message).strip().splitlines()[0] or "Invalid mathematical expression")[:160]
+            self.message_label.setText(friendly)
+            self.message_label.show()
+            self.input_field.setToolTip(friendly)
+            self.input_field.setStyleSheet("border-color: #EF4444;")
+        else:
+            self.message_label.clear()
+            self.message_label.hide()
+            self.input_field.setToolTip("")
+            self.input_field.setStyleSheet("")
 
     def enterEvent(self, event):
         self.hover_enter.emit(self)
@@ -592,6 +636,11 @@ class FuncoraWindow(QMainWindow):
         self.plotted_lines = {}
         self.function_text_ranges = {}
         self._active_card = None
+        self.current_project_path = None
+        self._draw_timer = QTimer(self)
+        self._draw_timer.setSingleShot(True)
+        self._draw_timer.setInterval(220)
+        self._draw_timer.timeout.connect(self.draw_graph)
         self.init_ui()
 
     def init_ui(self):
@@ -608,6 +657,23 @@ class FuncoraWindow(QMainWindow):
         brand_label = QLabel("Funcora")
         brand_label.setFont(QFont("Inter", 13, QFont.Bold))
         tb_layout.addWidget(brand_label)
+        project_btn = QToolButton()
+        project_btn.setText("Project")
+        project_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        project_menu = QMenu(project_btn)
+        for label, shortcut, callback in [
+            ("New Project", "Ctrl+Shift+N", self.new_project),
+            ("Open Project…", "Ctrl+O", self.open_project),
+            ("Save Project…", "Ctrl+S", self.save_project),
+        ]:
+            action = project_menu.addAction(label)
+            action.setShortcut(shortcut)
+            action.triggered.connect(callback)
+        project_menu.addSeparator()
+        export_action = project_menu.addAction("Export Graph…", self.save_graph)
+        export_action.setShortcut("Ctrl+E")
+        project_btn.setMenu(project_menu)
+        tb_layout.addWidget(project_btn)
         tb_layout.addStretch()
         for name, callback in [("Zoom +", self.zoom_in), ("Zoom -", self.zoom_out), ("Trig [-2π, 2π]", self.preset_trig),
                                ("Auto Scale", self.auto_scale), ("Reset View", self.reset_view), ("Save Graph", self.save_graph)]:
@@ -615,39 +681,67 @@ class FuncoraWindow(QMainWindow):
             btn.setText(name)
             btn.clicked.connect(callback)
             tb_layout.addWidget(btn)
-        self.mode_btn = QToolButton()
-        self.mode_btn.setText("Mode: Cartesian")
-        self.mode_btn.clicked.connect(self.cycle_plot_mode)
-        tb_layout.addWidget(self.mode_btn)
+        self.grid_btn = QToolButton()
+        self.grid_btn.setText("Grid: On")
+        self.grid_btn.clicked.connect(self.toggle_grid)
+        tb_layout.addWidget(self.grid_btn)
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItems(["Cartesian", "Parametric", "Polar", "Implicit"])
+        self.mode_combo.setToolTip("Plot mode")
+        self.mode_combo.currentTextChanged.connect(lambda text: self.set_plot_mode(text.lower()))
+        tb_layout.addWidget(self.mode_combo)
         main_layout.addWidget(toolbar)
         splitter = QSplitter(Qt.Horizontal)
         sidebar = QFrame()
         sidebar.setObjectName("sidebar")
+        sidebar.setMinimumWidth(380)
+        sidebar.setMaximumWidth(520)
         sidebar_layout = QVBoxLayout(sidebar)
         sidebar_layout.setContentsMargins(12, 12, 12, 12)
         func_header = QHBoxLayout()
         func_title = QLabel("Functions")
         func_title.setFont(QFont("Inter", 11, QFont.Bold))
+        examples_btn = QToolButton()
+        examples_btn.setText("Examples")
+        examples_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        examples_menu = QMenu(examples_btn)
+        examples = [
+            ("Quadratic", "cartesian", "x^2-4x+4"),
+            ("Sine wave", "cartesian", "sin(x)"),
+            ("Rational curve", "cartesian", "(x+1)/(x-2)"),
+            ("Parametric circle", "parametric", "5cos(t), 5sin(t)"),
+            ("Polar rose", "polar", "4cos(3t)"),
+            ("Implicit circle", "implicit", "x^2+y^2=25"),
+        ]
+        for label, mode, expression in examples:
+            action = examples_menu.addAction(label)
+            action.triggered.connect(lambda checked=False, m=mode, e=expression: self.load_example(m, e))
+        examples_btn.setMenu(examples_menu)
         add_btn = QPushButton("+ Add")
         add_btn.setObjectName("primaryBtn")
         add_btn.clicked.connect(lambda: self.add_function_card())
         func_header.addWidget(func_title)
         func_header.addStretch()
+        func_header.addWidget(examples_btn)
         func_header.addWidget(add_btn)
         sidebar_layout.addLayout(func_header)
         self.cards_container = QWidget()
         self.cards_layout = QVBoxLayout(self.cards_container)
         self.cards_layout.setContentsMargins(0, 0, 0, 0)
         self.cards_layout.setSpacing(8)
+        self.empty_label = QLabel("No functions yet.\nAdd one or start from an example.")
+        self.empty_label.setObjectName("emptyState")
+        self.empty_label.setAlignment(Qt.AlignCenter)
+        self.cards_layout.addWidget(self.empty_label)
         self.cards_layout.addStretch()
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setWidget(self.cards_container)
-        scroll_area.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        scroll_area.setStyleSheet("QScrollArea, QScrollArea > QWidget > QWidget { border: none; background-color: #161722; }")
         sidebar_layout.addWidget(scroll_area)
         clear_btn = QPushButton("Clear All")
         clear_btn.setObjectName("dangerBtn")
-        clear_btn.clicked.connect(self.clear_all_cards)
+        clear_btn.clicked.connect(lambda: self.clear_all_cards(confirm=True))
         sidebar_layout.addWidget(clear_btn)
         graph_widget = QWidget()
         graph_layout = QVBoxLayout(graph_widget)
@@ -678,11 +772,20 @@ class FuncoraWindow(QMainWindow):
         graph_layout.addWidget(bottom_bar)
         analysis_frame = QFrame()
         analysis_frame.setObjectName("analysisBar")
+        analysis_frame.setMinimumWidth(250)
         analysis_layout = QVBoxLayout(analysis_frame)
         analysis_layout.setContentsMargins(12, 12, 12, 12)
+        analysis_header = QHBoxLayout()
         analysis_title = QLabel("Analysis Panel")
         analysis_title.setFont(QFont("Inter", 11, QFont.Bold))
-        analysis_layout.addWidget(analysis_title)
+        copy_btn = QToolButton()
+        copy_btn.setText("Copy")
+        copy_btn.setToolTip("Copy analysis to clipboard")
+        copy_btn.clicked.connect(self.copy_analysis)
+        analysis_header.addWidget(analysis_title)
+        analysis_header.addStretch()
+        analysis_header.addWidget(copy_btn)
+        analysis_layout.addLayout(analysis_header)
         self.analysis_text = QTextEdit()
         self.analysis_text.setObjectName("analysisText")
         self.analysis_text.setReadOnly(True)
@@ -691,9 +794,159 @@ class FuncoraWindow(QMainWindow):
         splitter.addWidget(sidebar)
         splitter.addWidget(graph_widget)
         splitter.addWidget(analysis_frame)
-        splitter.setSizes([320, 740, 280])
+        splitter.setSizes([390, 690, 280])
         main_layout.addWidget(splitter)
+        self.install_shortcuts()
         self.add_function_card("x**2-4x+4")
+
+    def install_shortcuts(self):
+        shortcuts = [
+            ("New function", "Ctrl+N", lambda: self.add_function_card()),
+            ("Reset view", "Ctrl+0", self.reset_view),
+            ("Toggle grid", "Ctrl+Shift+G", self.toggle_grid),
+        ]
+        for name, shortcut, callback in shortcuts:
+            action = QAction(name, self)
+            action.setShortcut(shortcut)
+            action.triggered.connect(callback)
+            self.addAction(action)
+
+    def schedule_draw(self):
+        self._draw_timer.start()
+
+    def toggle_grid(self):
+        self.grid_visible = not self.grid_visible
+        self.grid_btn.setText("Grid: On" if self.grid_visible else "Grid: Off")
+        self.draw_graph()
+
+    def copy_analysis(self):
+        text = self.analysis_text.toPlainText().strip()
+        if text:
+            QApplication.clipboard().setText(text)
+            self.statusBar().showMessage("Analysis copied", 1800)
+
+    def project_data(self):
+        return {
+            "version": 1,
+            "mode": self.plot_mode,
+            "grid_visible": self.grid_visible,
+            "bounds": {name: spin.value() for name, spin in self.spins.items()},
+            "functions": [
+                {
+                    "expression": card.get_expression(),
+                    "color": card.color,
+                    "visible": card.is_visible,
+                    "fill_area": card.fill_area,
+                }
+                for card in self.cards
+            ],
+        }
+
+    def save_project(self, path=None):
+        if isinstance(path, bool):
+            path = None
+        if not path:
+            path = QFileDialog.getSaveFileName(
+                self, "Save Funcora Project", self.current_project_path or "Untitled.funcora",
+                "Funcora Projects (*.funcora)"
+            )[0]
+        if not path:
+            return False
+        if not path.lower().endswith(".funcora"):
+            path += ".funcora"
+        try:
+            with open(path, "w", encoding="utf-8") as project_file:
+                json.dump(self.project_data(), project_file, indent=2)
+        except (OSError, TypeError) as exc:
+            QMessageBox.warning(self, "Could not save project", str(exc))
+            return False
+        self.current_project_path = path
+        self.setWindowTitle(f"Funcora — {os.path.basename(path)}")
+        self.statusBar().showMessage("Project saved", 1800)
+        return True
+
+    def open_project(self, path=None):
+        if isinstance(path, bool):
+            path = None
+        if not path:
+            path = QFileDialog.getOpenFileName(
+                self, "Open Funcora Project", "", "Funcora Projects (*.funcora)"
+            )[0]
+        if not path:
+            return False
+        try:
+            with open(path, "r", encoding="utf-8") as project_file:
+                data = json.load(project_file)
+            self.load_project_data(data)
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            QMessageBox.warning(self, "Could not open project", str(exc))
+            return False
+        self.current_project_path = path
+        self.setWindowTitle(f"Funcora — {os.path.basename(path)}")
+        self.statusBar().showMessage("Project opened", 1800)
+        return True
+
+    def load_project_data(self, data):
+        if not isinstance(data, dict) or data.get("version") != 1:
+            raise ValueError("This is not a supported Funcora project file.")
+        mode = data.get("mode", "cartesian")
+        if mode not in {"cartesian", "parametric", "polar", "implicit"}:
+            raise ValueError("The project contains an unknown plot mode.")
+        function_data = data.get("functions", [])
+        if not isinstance(function_data, list):
+            raise ValueError("The project function list is invalid.")
+
+        self.clear_all_cards(redraw=False)
+        self.set_plot_mode(mode, redraw=False)
+        self.grid_visible = bool(data.get("grid_visible", True))
+        self.grid_btn.setText("Grid: On" if self.grid_visible else "Grid: Off")
+        bounds = data.get("bounds", {})
+        for name, fallback in [("X Min", -10.0), ("X Max", 10.0), ("Y Min", -10.0), ("Y Max", 10.0)]:
+            try:
+                value = float(bounds.get(name, fallback))
+            except (TypeError, ValueError):
+                value = fallback
+            self.spins[name].blockSignals(True)
+            self.spins[name].setValue(value)
+            self.spins[name].blockSignals(False)
+
+        for item in function_data:
+            if not isinstance(item, dict):
+                continue
+            card = self.add_function_card(
+                str(item.get("expression", "x")),
+                color=str(item.get("color", "#2563EB")),
+                redraw=False,
+            )
+            card.is_visible = bool(item.get("visible", True))
+            card.toggle_btn.setText("ON" if card.is_visible else "OFF")
+            card.toggle_btn.setProperty("visible_state", "true" if card.is_visible else "false")
+            card.toggle_btn.setStyle(card.toggle_btn.style())
+            card.input_field.setEnabled(card.is_visible)
+            card.fill_area = bool(item.get("fill_area", False))
+            card.fill_btn.setProperty("fill_state", "true" if card.fill_area else "false")
+            card.fill_btn.setStyle(card.fill_btn.style())
+        self.update_empty_state()
+        self.draw_graph()
+
+    def new_project(self):
+        if self.cards:
+            result = QMessageBox.question(
+                self, "New project", "Start a new project? Unsaved changes will be lost.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+                QMessageBox.StandardButton.Cancel,
+            )
+            if result != QMessageBox.StandardButton.Yes:
+                return
+        self.current_project_path = None
+        self.setWindowTitle("Funcora")
+        self.clear_all_cards(redraw=False)
+        self.set_plot_mode("cartesian", redraw=False)
+        self.grid_visible = True
+        self.grid_btn.setText("Grid: On")
+        self.update_spin_boxes_silent(-10.0, 10.0, -10.0, 10.0)
+        self.add_function_card("x")
+        self.statusBar().showMessage("New project created", 1800)
 
     def update_coord_status(self, x, y):
         self.coord_label.setText(f"x: {x:.2f} | y: {y:.2f}")
@@ -704,19 +957,33 @@ class FuncoraWindow(QMainWindow):
             self.spins[name].setValue(val)
             self.spins[name].blockSignals(False)
 
-    def add_function_card(self, expr: str = "x"):
+    def add_function_card(self, expr: str = "x", color=None, redraw=True):
         idx = len(self.cards) + 1
-        color = self.default_colors[(idx - 1) % len(self.default_colors)]
+        color = color or self.default_colors[(idx - 1) % len(self.default_colors)]
         card = FunctionCard(index=idx, color=color, expression=expr)
         card.card_deleted.connect(self.remove_function_card)
-        card.data_changed.connect(self.draw_graph)
+        card.duplicate_requested.connect(self.duplicate_function_card)
+        card.data_changed.connect(self.schedule_draw)
         card.hover_enter.connect(self.highlight_function)
         card.hover_leave.connect(lambda c: self.clear_highlight())
         self.cards.append(card)
         self.cards_layout.insertWidget(self.cards_layout.count() - 1, card)
         self.reindex_cards()
         self.apply_mode_placeholder(card)
+        self.update_empty_state()
+        if redraw:
+            self.draw_graph()
+        return card
+
+    def duplicate_function_card(self, source: FunctionCard):
+        card = self.add_function_card(source.get_expression(), color=source.color, redraw=False)
+        card.fill_area = source.fill_area
+        card.fill_btn.setProperty("fill_state", "true" if card.fill_area else "false")
+        card.fill_btn.setStyle(card.fill_btn.style())
         self.draw_graph()
+        card.input_field.setFocus()
+        card.input_field.selectAll()
+        self.statusBar().showMessage("Function duplicated", 1800)
 
     def remove_function_card(self, card: FunctionCard):
         if card in self.cards:
@@ -727,9 +994,18 @@ class FuncoraWindow(QMainWindow):
             if self._active_card is card: self._active_card = None
             card.deleteLater()
             self.reindex_cards()
+            self.update_empty_state()
             self.draw_graph()
 
-    def clear_all_cards(self):
+    def clear_all_cards(self, redraw=True, confirm=False):
+        if confirm and self.cards:
+            result = QMessageBox.question(
+                self, "Clear functions", "Remove all functions from this project?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+                QMessageBox.StandardButton.Cancel,
+            )
+            if result != QMessageBox.StandardButton.Yes:
+                return False
         for card in list(self.cards):
             self.cards.remove(card)
             self.cards_layout.removeWidget(card)
@@ -738,25 +1014,48 @@ class FuncoraWindow(QMainWindow):
         self.function_text_ranges = {}
         self._active_card = None
         self.reindex_cards()
-        self.draw_graph()
+        self.update_empty_state()
+        if redraw:
+            self.draw_graph()
+        return True
+
+    def update_empty_state(self):
+        self.empty_label.setVisible(not self.cards)
 
     def reindex_cards(self):
-        for i, card in enumerate(self.cards, start=1): card.set_index(i)
+        argument = {"parametric": "t", "polar": "θ", "implicit": "x,y"}.get(self.plot_mode, "x")
+        for i, card in enumerate(self.cards, start=1):
+            card.set_index(i, argument)
 
     def apply_mode_placeholder(self, card):
         if self.plot_mode == "parametric": card.input_field.setPlaceholderText("cos(t), sin(t)")
         elif self.plot_mode == "polar": card.input_field.setPlaceholderText("1 + cos(t)")
         elif self.plot_mode == "implicit": card.input_field.setPlaceholderText("x**2 + y**2 = 25")
-        else: card.input_field.setPlaceholderText("")
+        else: card.input_field.setPlaceholderText("e.g. x^2 - 4x + 4")
         card.fill_btn.setVisible(self.plot_mode == "cartesian")
 
-    def cycle_plot_mode(self):
-        order = ["cartesian", "parametric", "polar", "implicit"]
-        self.plot_mode = order[(order.index(self.plot_mode) + 1) % len(order)]
-        self.mode_btn.setText(f"Mode: {self.plot_mode.capitalize()}")
+    def set_plot_mode(self, mode, redraw=True):
+        if mode not in {"cartesian", "parametric", "polar", "implicit"}:
+            return
+        self.plot_mode = mode
+        self.mode_combo.blockSignals(True)
+        self.mode_combo.setCurrentText(mode.capitalize())
+        self.mode_combo.blockSignals(False)
         for card in self.cards: self.apply_mode_placeholder(card)
+        self.reindex_cards()
         self.clear_highlight()
+        if redraw:
+            self.draw_graph()
+
+    def load_example(self, mode, expression):
+        self.set_plot_mode(mode, redraw=False)
+        if len(self.cards) == 1 and self.cards[0].get_expression() in {"x", "x**2-4x+4"}:
+            self.cards[0].input_field.setText(expression)
+            self.cards[0].input_field.setCursorPosition(0)
+        else:
+            self.add_function_card(expression, redraw=False)
         self.draw_graph()
+        self.statusBar().showMessage("Example loaded", 1800)
 
     def highlight_function(self, card):
         if self._active_card is card: return
@@ -796,6 +1095,7 @@ class FuncoraWindow(QMainWindow):
         self.analysis_text.ensureCursorVisible()
 
     def draw_graph(self):
+        self._draw_timer.stop()
         if self.plot_mode == "parametric": self._draw_parametric()
         elif self.plot_mode == "polar": self._draw_polar()
         elif self.plot_mode == "implicit": self._draw_implicit()
@@ -811,10 +1111,12 @@ class FuncoraWindow(QMainWindow):
         any_drawn = False
         valid_funcs = []
         for idx, card in enumerate(self.cards, start=1):
+            card.set_error()
             if not card.is_visible: continue
             try:
                 cached = card.get_analysis(self.x_symbol)
-            except Exception:
+            except Exception as exc:
+                card.set_error(f"Could not parse: {exc}")
                 continue
             if cached:
                 valid_funcs.append((idx, card, cached))
@@ -928,7 +1230,9 @@ class FuncoraWindow(QMainWindow):
                 analysis_output += f"Local Max: {', '.join([f'({fmt_num(x)}, {fmt_num(y)})' for x, y in maximums]) or 'None'}\nLocal Min: {', '.join([f'({fmt_num(x)}, {fmt_num(y)})' for x, y in minimums]) or 'None'}\n\n"
                 analysis_output += f"Derivative: {pretty(cached.derivative_1)}\nIntegral: {pretty(cached.integral)} + C\n\n\n"
                 self.function_text_ranges[card] = (block_start, len(analysis_output))
-            except Exception: continue
+            except Exception as exc:
+                card.set_error(f"Could not render: {exc}")
+                continue
 
         if intersections:
             analysis_output += "Intersections:\n"
@@ -967,7 +1271,13 @@ class FuncoraWindow(QMainWindow):
         any_drawn = False
         transformations = standard_transformations + (implicit_multiplication_application,)
         for idx, card in enumerate(self.cards, start=1):
-            if not card.is_visible or "," not in (expr_str := card.get_expression()): continue
+            card.set_error()
+            if not card.is_visible: continue
+            expr_str = card.get_expression()
+            if not expr_str: continue
+            if "," not in expr_str:
+                card.set_error("Enter a pair separated by a comma, e.g. cos(t), sin(t)")
+                continue
             try:
                 sanitize_math_input(expr_str)
                 x_str, y_str = expr_str.split(",", 1)
@@ -980,7 +1290,9 @@ class FuncoraWindow(QMainWindow):
                 line, = self.canvas.ax.plot(xv, yv, color=card.color, linewidth=2, label=f"{get_func_name(idx)}(t) = ({x_str.strip()}, {y_str.strip()})")
                 self.plotted_lines[card] = line
                 any_drawn = True
-            except Exception: continue
+            except Exception as exc:
+                card.set_error(f"Use x(t), y(t): {exc}")
+                continue
         self.canvas.ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
         if self.is_trig_mode:
             w = xmax - xmin
@@ -1010,6 +1322,7 @@ class FuncoraWindow(QMainWindow):
         t_vals = np.linspace(0, 8 * np.pi, 4000)
         any_drawn = False
         for idx, card in enumerate(self.cards, start=1):
+            card.set_error()
             if not card.is_visible or not (expr_str := card.get_expression()): continue
             try:
                 sanitize_math_input(expr_str)
@@ -1020,7 +1333,9 @@ class FuncoraWindow(QMainWindow):
                 line, = self.canvas.ax.plot(rv * np.cos(t_vals), rv * np.sin(t_vals), color=card.color, linewidth=2, label=f"{get_func_name(idx)}(θ) = {expr_str}")
                 self.plotted_lines[card] = line
                 any_drawn = True
-            except Exception: continue
+            except Exception as exc:
+                card.set_error(f"Could not parse r(θ): {exc}")
+                continue
         self.canvas.ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
         if self.is_trig_mode:
             w = xmax - xmin
@@ -1051,6 +1366,7 @@ class FuncoraWindow(QMainWindow):
         x_sym, y_sym = sp.Symbol("x"), sp.Symbol("y")
         any_drawn = False
         for idx, card in enumerate(self.cards, start=1):
+            card.set_error()
             if not card.is_visible or not (expr_str := card.get_expression()): continue
             eq_str = f"({expr_str.split('=', 1)[0]})-({expr_str.split('=', 1)[1]})" if "=" in expr_str else expr_str
             try:
@@ -1064,7 +1380,9 @@ class FuncoraWindow(QMainWindow):
                     plotted_obj = cs
                 self.plotted_lines[card] = plotted_obj
                 any_drawn = True
-            except Exception: continue
+            except Exception as exc:
+                card.set_error(f"Could not parse equation: {exc}")
+                continue
         self.canvas.ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
         if self.is_trig_mode:
             w = xmax - xmin
@@ -1088,7 +1406,7 @@ class FuncoraWindow(QMainWindow):
         self.update_spin_boxes_silent(xmin, xmax, ymin, ymax)
         self.draw_graph()
 
-    def on_spin_changed(self): self.draw_graph()
+    def on_spin_changed(self): self.schedule_draw()
 
     def zoom_in(self):
         xmin, xmax, ymin, ymax = self.spins["X Min"].value(), self.spins["X Max"].value(), self.spins["Y Min"].value(), self.spins["Y Max"].value()
