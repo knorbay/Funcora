@@ -56,10 +56,7 @@ jobs:
             --low-memory \
             --lto=no \
             --enable-plugin=pyside6 \
-            --enable-plugin=numpy \
-            --enable-plugin=matplotlib \
             --include-data-dir=assets=assets \
-            --include-package=sympy \
             --output-dir=build \
             Funcora.py
 
@@ -76,10 +73,7 @@ jobs:
             --windows-console-mode=disable `
             --windows-icon-from-ico=assets/icon.ico `
             --enable-plugin=pyside6 `
-            --enable-plugin=numpy `
-            --enable-plugin=matplotlib `
             --include-data-dir=assets=assets `
-            --include-package=sympy `
             --output-dir=build `
             Funcora.py
 
