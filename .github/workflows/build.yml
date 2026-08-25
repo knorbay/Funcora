@@ -7,6 +7,10 @@ on:
       - main
       - "release/**"
 
+concurrency:
+  group: desktop-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build ${{ matrix.name }}
@@ -34,55 +38,42 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install nuitka PySide6 numpy matplotlib sympy ordered-set zstandard
+          python -m pip install pyinstaller PySide6 numpy matplotlib sympy
 
       - name: Build standalone application
         if: runner.os != 'Windows'
         run: |
-          python -m nuitka \
-            --standalone \
-            --assume-yes-for-downloads \
-            --jobs=2 \
-            --low-memory \
-            --lto=no \
-            --enable-plugin=pyside6 \
-            --enable-plugin=numpy \
-            --enable-plugin=matplotlib \
-            --include-data-dir=assets=assets \
-            --include-package=sympy \
-            --output-dir=build \
+          python -m PyInstaller \
+            --noconfirm \
+            --clean \
+            --windowed \
+            --name Funcora \
+            --add-data "assets:assets" \
             Funcora.py
 
       - name: Build standalone application
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          python -m nuitka `
-            --standalone `
-            --assume-yes-for-downloads `
-            --jobs=2 `
-            --low-memory `
-            --lto=no `
-            --windows-console-mode=disable `
-            --windows-icon-from-ico=assets/icon.ico `
-            --enable-plugin=pyside6 `
-            --enable-plugin=numpy `
-            --enable-plugin=matplotlib `
-            --include-data-dir=assets=assets `
-            --include-package=sympy `
-            --output-dir=build `
+          python -m PyInstaller `
+            --noconfirm `
+            --clean `
+            --windowed `
+            --name Funcora `
+            --icon assets/icon.ico `
+            --add-data "assets;assets" `
             Funcora.py
 
       - name: Package Linux build
         if: runner.os == 'Linux'
         run: |
-          cd build/Funcora.dist
+          cd dist/Funcora
           zip -9 -r ../../Funcora-Linux.zip .
 
       - name: Package Windows build
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path build/Funcora.dist/* -DestinationPath Funcora-Windows.zip -CompressionLevel Optimal
+        run: Compress-Archive -Path dist/Funcora/* -DestinationPath Funcora-Windows.zip -CompressionLevel Optimal
 
       - name: Upload packaged application
         uses: actions/upload-artifact@v4
