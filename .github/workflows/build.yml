@@ -70,6 +70,7 @@ jobs:
             --jobs=2 `
             --low-memory `
             --lto=no `
+            --clang `
             --windows-console-mode=disable `
             --windows-icon-from-ico=assets/icon.ico `
             --enable-plugin=pyside6 `
