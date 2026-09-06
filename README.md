@@ -1,65 +1,50 @@
 # Funcora
 
-Funcora is a desktop mathematical graphing and analysis application developed with Python. It provides tools for visualizing mathematical functions and performing symbolic and numerical analysis through a graphical user interface.
+A mathematical graphing and analysis application built with Python.
 
-## Features
+Highlights
+- Interactive function plotting and analysis
+- Uses NumPy, Matplotlib and PySide6 for GUI
+- Suitable for visualizing and exploring mathematical functions
 
-* Function graphing
-* Multiple function visualization
-* Customizable X and Y axis ranges
-* Function root analysis
-* First and second derivative analysis
-* Maximum and minimum point analysis
-* Definite and indefinite integral analysis
-* Mathematical expression parsing
-* Graph saving
-* Interactive graphical user interface
+Quickstart
+1. Clone the repo
+   ```bash
+   git clone https://github.com/knorbay/Funcora.git
+   cd Funcora
+   ```
+2. Create and activate a virtual environment
+   ```bash
+   python -m venv venv
+   # macOS / Linux
+   source venv/bin/activate
+   # Windows (PowerShell)
+   .\venv\Scripts\Activate.ps1
+   ```
+3. Install dependencies
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Run the app
+   ```bash
+   # Adjust entry point if different (e.g. main.py, app.py)
+   python Funcora.py
+   ```
 
-## Technologies
+Notes
+- If there is no `requirements.txt`, create one listing numpy, matplotlib, pyside6, sympy as needed:
+  ```bash
+  pip install numpy matplotlib pyside6 sympy
+  pip freeze > requirements.txt
+  ```
 
-* Python
-* PySide6
-* SymPy
-* NumPy
-* Matplotlib
-* Nuitka
+Contributing
+- Bug reports and feature requests: open an Issue.
+- Suggestions welcome — create a branch, add changes and open a Pull Request.
+- Helpful labels: `good first issue`, `help wanted`.
 
-## Project Structure
+License
+This project is licensed under the MIT License — see the LICENSE file for details.
 
-The application is built using a modular architecture that separates the graphical interface, mathematical processing, graph rendering, and analysis functionality.
-
-## Installation
-
-Clone the repository:
-
-```bash
-git clone https://github.com/knorbay/Funcora.git
-cd Funcora
-```
-
-Install the required dependencies:
-
-```bash
-pip install PySide6 SymPy NumPy Matplotlib
-```
-
-Run the application:
-
-```bash
-python Funcora.py
-```
-
-## Download
-
-Pre-built versions of Funcora are available through itch.io and Gumroad.
-
-* [Download Funcora from itch.io](https://knorbay.itch.io/funcora)
-* [Download Funcora from Gumroad](https://knorbay.gumroad.com/l/funcora?_gl=1*1q6wxe*_ga*MTk3NzE5ODU4LjE3ODYyMTc4NjY.*_ga_6LJN6D94N6*czE3ODYyODEzNzEkbzMkZzEkdDE3ODYyODIxODAkajQ3JGwwJGgw)
-
-## Development
-
-Funcora was developed as an independent software project using Python and its scientific computing ecosystem. AI-assisted development tools were also used throughout the development process for research, debugging, code analysis, and implementation.
-
-## License
-
-This project is licensed under the MIT License.
+Project links
+- Repository: https://github.com/knorbay/Funcora
